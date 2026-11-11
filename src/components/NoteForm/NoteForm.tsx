@@ -1,19 +1,17 @@
+
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createNote } from "../../services/noteService";
+import type { NewNote } from "../../types/note";
 import css from "./NoteForm.module.css";
-
-interface NoteFormValues {
-  title: string;
-  content: string;
-  tag: "Todo" | "Work" | "Personal" | "Meeting" | "Shopping";
-}
 
 interface NoteFormProps {
   onCancel: () => void;
-  onSubmit: (values: NoteFormValues) => void;
+  onSubmit: () => void;
 }
 
-const initialValues: NoteFormValues = {
+const initialValues: NewNote = {
   title: "",
   content: "",
   tag: "Todo",
@@ -37,19 +35,33 @@ export default function NoteForm({
   onCancel,
   onSubmit,
 }: NoteFormProps) {
-  const handleSubmit = (
-    values: NoteFormValues,
-    actions: { resetForm: () => void }
-  ) => {
-    onSubmit(values);
-    actions.resetForm();
-  };
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["notes"],
+      });
+
+      onSubmit();
+    },
+  });
 
   return (
     <Formik
       initialValues={initialValues}
       validationSchema={validationSchema}
-      onSubmit={handleSubmit}
+      onSubmit={async (values, actions) => {
+        try {
+          await mutation.mutateAsync(values);
+          actions.resetForm();
+        } catch (error) {
+          console.error("Failed to create note:", error);
+        } finally {
+          actions.setSubmitting(false);
+        }
+      }}
     >
       {({ isSubmitting }) => (
         <Form className={css.form}>
@@ -105,6 +117,12 @@ export default function NoteForm({
             />
           </div>
 
+          {mutation.isError && (
+            <p className={css.error}>
+              Failed to create note. Please try again.
+            </p>
+          )}
+
           <div className={css.actions}>
             <button
               type="button"
@@ -117,7 +135,7 @@ export default function NoteForm({
             <button
               type="submit"
               className={css.submitButton}
-              disabled={isSubmitting}
+              disabled={isSubmitting || mutation.isPending}
             >
               Create note
             </button>

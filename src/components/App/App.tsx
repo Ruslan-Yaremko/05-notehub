@@ -1,14 +1,8 @@
 import { useState } from "react";
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useDebouncedCallback } from "use-debounce";
 
-import { fetchNotes, createNote } from "../../services/noteService";
-import type { NewNote } from "../../types/note";
-
+import { fetchNotes } from "../../services/noteService";
 import NoteList from "../NoteList/NoteList";
 import Pagination from "../Pagination/Pagination";
 import SearchBox from "../SearchBox/SearchBox";
@@ -18,8 +12,6 @@ import NoteForm from "../NoteForm/NoteForm";
 import css from "./App.module.css";
 
 export default function App() {
-  const queryClient = useQueryClient();
-
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [inputValue, setInputValue] = useState("");
@@ -41,14 +33,7 @@ export default function App() {
         perPage: 12,
         search: searchQuery || undefined,
       }),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      setIsModalOpen(false);
-    },
+    placeholderData: keepPreviousData,
   });
 
   const handleSearch = (value: string) => {
@@ -62,10 +47,6 @@ export default function App() {
     selected: number;
   }) => {
     setCurrentPage(selected + 1);
-  };
-
-  const handleCreateNote = (values: NewNote) => {
-    createMutation.mutate(values);
   };
 
   const notes = data?.notes ?? [];
@@ -114,7 +95,7 @@ export default function App() {
         <Modal onClose={() => setIsModalOpen(false)}>
           <NoteForm
             onCancel={() => setIsModalOpen(false)}
-            onSubmit={handleCreateNote}
+            onSubmit={() => setIsModalOpen(false)}
           />
         </Modal>
       )}

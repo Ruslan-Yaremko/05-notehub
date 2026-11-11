@@ -25,6 +25,16 @@ export default function Modal({
     };
   }, [onClose]);
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   return createPortal(
     <div
       className={css.backdrop}
